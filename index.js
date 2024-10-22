@@ -1,6 +1,7 @@
 // server.js
 import express from 'express';
 import userRouter from './api/user.js'; 
+import riderRouter from './api/rider.js'; 
 import multer from 'multer';
 
 const app = express();
@@ -10,7 +11,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // เพื่อจัดการกับข้อมูลที่ส่งแบบ URL-encoded
 app.use('/user', userRouter); // ใช้ router สำหรับเส้นทาง /user
-
+app.use('/rider', riderRouter);
 // Global error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);

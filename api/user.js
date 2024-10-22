@@ -1,29 +1,14 @@
-// user.js
 import express from 'express';
 import multer from 'multer';
-import { initializeApp } from 'firebase/app';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import bcrypt from 'bcrypt';
+import firebaseApp from '../config/firebase/firebaseConfig.js'; // นำเข้าจากไฟล์คอนฟิก
+
+const storage = getStorage(firebaseApp); // ใช้ storage จากแอปที่นำเข้ามา
 
 const router = express.Router();
-
-// Firebase Configuration
-const firebaseConfig = {
-    apiKey: "AIzaSyABE1_rXs0M5IJHH9ONyWAIxkNW3PZXwXM",
-    authDomain: "database-delivery-project.firebaseapp.com",
-    databaseURL: "https://database-delivery-project-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "database-delivery-project",
-    storageBucket: "database-delivery-project.appspot.com",
-    messagingSenderId: "1048215803691",
-    appId: "1:1048215803691:web:fe620c2be4100b0748176e",
-    measurementId: "G-3R0F02NB6G"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const storage = getStorage(app);
 
 // SQLite Database setup
 const database = await open({
@@ -47,61 +32,68 @@ const upload = multer({
         }
     }
 });
-
 // POST Add User Route
 router.post("/add-user", upload.single("image"), async (req, res) => {
-  if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded." });
-  }
+    if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded." });
+    }
 
-  const storageRef = ref(storage, `uploads/${req.file.originalname}`);
-  const fileBuffer = req.file.buffer;
+    const storageRef = ref(storage, `uploads/${req.file.originalname}`);
+    const fileBuffer = req.file.buffer;
 
-  // Create metadata for the file
-  const metadata = {
-      contentType: req.file.mimetype, // Set the correct content type
-  };
+    // Create metadata for the file
+    const metadata = {
+        contentType: req.file.mimetype, // Set the correct content type
+    };
 
-  try {
-      // Upload the file with metadata
-      await uploadBytesResumable(storageRef, fileBuffer, metadata);
-      const downloadURL = await getDownloadURL(storageRef);
-      
-      const userData = {
-          name: req.body.name,
-          phone: req.body.phone,
-          password: req.body.password,
-          address: req.body.address,
-          gps: req.body.gps,
-          image: downloadURL // URL ที่เข้าถึงได้
-      };
+    try {
+        // Upload the file with metadata
+        await uploadBytesResumable(storageRef, fileBuffer, metadata);
+        const downloadURL = await getDownloadURL(storageRef);
+        
+        const userData = {
+            name: req.body.name,
+            phone: req.body.phone,
+            password: req.body.password,
+            address: req.body.address,
+            gps: req.body.gps,
+            image: downloadURL // URL ที่เข้าถึงได้
+        };
 
-      // เข้ารหัสรหัสผ่านก่อนเก็บลงในฐานข้อมูล
-      const hashedPassword = await bcrypt.hash(userData.password, 10);
+        // ตรวจสอบว่ามีผู้ใช้อยู่ในระบบหรือไม่
+        const existingUser = await database.get('SELECT * FROM users WHERE phone = ?', [userData.phone]);
 
-      const insertQuery = `
-          INSERT INTO users (name, phone, password, address, gps, image)
-          VALUES (?, ?, ?, ?, ?, ?)`;
+        if (existingUser) {
+            return res.status(400).json({ message: "มีผู้ใช้เบอร์นี้แล้ว" });
+        }
 
-      // Run the insert query
-      await database.run(insertQuery, [
-          userData.name,
-          userData.phone,
-          hashedPassword, // ใช้รหัสผ่านที่เข้ารหัส
-          userData.address,
-          userData.gps,
-          userData.image
-      ]);
+        // เข้ารหัสรหัสผ่านก่อนเก็บลงในฐานข้อมูล
+        const hashedPassword = await bcrypt.hash(userData.password, 10);
 
-      res.status(200).json({
-          message: "File uploaded successfully and user data added.",
-          filename: downloadURL
-      });
-  } catch (error) {
-      console.error("Error uploading file or inserting user data:", error);
-      res.status(500).json({ message: "Error processing request", error: error.message });
-  }
+        const insertQuery = `
+            INSERT INTO users (name, phone, password, address, gps, image)
+            VALUES (?, ?, ?, ?, ?, ?)`;
+
+        // Run the insert query
+        await database.run(insertQuery, [
+            userData.name,
+            userData.phone,
+            hashedPassword, // ใช้รหัสผ่านที่เข้ารหัส
+            userData.address,
+            userData.gps,
+            userData.image
+        ]);
+
+        res.status(200).json({
+            message: "File uploaded successfully and user data added.",
+            filename: downloadURL
+        });
+    } catch (error) {
+        console.error("Error uploading file or inserting user data:", error);
+        res.status(500).json({ message: "Error processing request", error: error.message });
+    }
 });
+
 // GET all users Route
 router.get("/get-users", async (req, res) => {
     try {
@@ -135,7 +127,7 @@ router.post("/login", async (req, res) => {
           res.status(200).json({
               message: "Login successful.",
               user: {
-                  id: user.id,
+                  uid: user.uid,
                   name: user.name,
                   phone: user.phone,
                   address: user.address,
