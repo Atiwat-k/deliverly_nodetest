@@ -1,4 +1,3 @@
-// rider.js
 import express from 'express';
 import multer from 'multer';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
@@ -35,7 +34,6 @@ const upload = multer({
 });
 
 // POST Add Rider Route
-// POST Add Rider Route
 router.post("/add-rider", upload.single("image"), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ message: "No file uploaded." });
@@ -58,8 +56,8 @@ router.post("/add-rider", upload.single("image"), async (req, res) => {
             name: req.body.name,
             phone: req.body.phone,
             password: req.body.password,
-            vehicleRegistration: req.body.vehicleRegistration, // ชื่อเดิม
-            image: downloadURL // ชื่อใหม่
+            vehicleRegistration: req.body.vehicleRegistration, 
+            image: downloadURL 
         };
 
         // ตรวจสอบว่ามีผู้ขับขี่ (rider) อยู่ในระบบหรือไม่
@@ -80,9 +78,9 @@ router.post("/add-rider", upload.single("image"), async (req, res) => {
         await database.run(insertQuery, [
             riderData.name,
             riderData.phone,
-            hashedPassword, // ใช้รหัสผ่านที่เข้ารหัส
-            riderData.vehicleRegistration, // ใช้ชื่อเดิม
-            riderData.image // ใช้ชื่อใหม่
+            hashedPassword, 
+            riderData.vehicleRegistration, 
+            riderData.image 
         ]);
 
         res.status(200).json({
@@ -99,7 +97,7 @@ router.post("/add-rider", upload.single("image"), async (req, res) => {
 // GET all riders Route
 router.get("/get-riders", async (req, res) => {
     try {
-        const riders = await database.all('SELECT rid AS id, name, phone, vehicleRegistration, image FROM riders'); // ใช้ชื่อเดิม
+        const riders = await database.all('SELECT rid AS id, name, phone, vehicleRegistration, image FROM riders'); 
         if (riders.length > 0) {
             res.status(200).json(riders);
         } else {
@@ -133,7 +131,6 @@ router.post("/login", async (req, res) => {
                     rid: rider.rid, 
                     name: rider.name,
                     phone: rider.phone,
-                    password: rider.password,
                     vehicleRegistration: rider.vehicleRegistration, 
                     image: rider.image 
                 }
@@ -144,6 +141,24 @@ router.post("/login", async (req, res) => {
     } catch (error) {
         console.error("Error logging in:", error);
         res.status(500).json({ message: "Error processing request", error: error.message });
+    }
+});
+
+// GET Rider by RID Route
+router.get("/get-rider/:rid", async (req, res) => {
+    const rid = req.params.rid; // ดึง RID จาก URL params
+
+    try {
+        const rider = await database.get('SELECT * FROM riders WHERE rid = ?', [rid]);
+
+        if (rider) {
+            res.status(200).json(rider);
+        } else {
+            res.status(404).json({ message: "Rider not found." });
+        }
+    } catch (error) {
+        console.error("Error retrieving rider:", error);
+        res.status(500).json({ message: "Error retrieving rider", error: error.message });
     }
 });
 

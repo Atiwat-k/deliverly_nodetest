@@ -78,7 +78,31 @@ router.post('/shipments', upload.fields([{ name: 'image', maxCount: 1 }]), async
 // API: Get all shipments
 router.get('/shipments', async (req, res) => {
     try {
-        const shipments = await database.all('SELECT * FROM shipments');
+        const query = `
+            SELECT 
+                s.shipment_id,
+                s.description,
+                s.status,
+                s.image,
+                s.pickup_location,
+                s.delivery_location,
+                sender.uid AS sender_id,
+                sender.name AS sender_name,
+                sender.phone AS sender_phone,
+                sender.address AS sender_address,
+                sender.gps AS sender_gps,
+                sender.image AS sender_image,
+                receiver.uid AS receiver_id,
+                receiver.name AS receiver_name,
+                receiver.phone AS receiver_phone,
+                receiver.address AS receiver_address,
+                receiver.gps AS receiver_gps,
+                receiver.image AS receiver_image
+            FROM shipments s
+            JOIN users sender ON s.sender_id = sender.uid
+            JOIN users receiver ON s.receiver_id = receiver.uid;
+        `;
+        const shipments = await database.all(query);
         res.status(200).json(shipments);
     } catch (error) {
         console.error("Error fetching shipments:", error);
