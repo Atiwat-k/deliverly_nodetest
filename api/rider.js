@@ -66,7 +66,7 @@ router.post("/add-rider", upload.single("image"), async (req, res) => {
         const existingRider = await database.get('SELECT * FROM riders WHERE phone = ?', [riderData.phone]);
 
         if (existingRider) {
-            return res.status(400).json({ message: "มีผู้ใช้เบอร์นี้แล้ว" });
+            return res.status(400).json({ message: "This number is already in use." });
         }
 
         // เข้ารหัสรหัสผ่านก่อนเก็บลงในฐานข้อมูล

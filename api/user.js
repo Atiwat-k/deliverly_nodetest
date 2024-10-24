@@ -143,4 +143,23 @@ router.post("/login", async (req, res) => {
       res.status(500).json({ message: "Error processing request", error: error.message });
   }
 });
+
+// GET user by UID Route
+router.get("/get-user/:uid", async (req, res) => {
+    const uid = req.params.uid; // ดึง UID จาก URL params
+
+    try {
+        const user = await database.get('SELECT * FROM users WHERE uid = ?', [uid]);
+
+        if (user) {
+            res.status(200).json(user);
+        } else {
+            res.status(404).json({ message: "User not found." });
+        }
+    } catch (error) {
+        console.error("Error retrieving user:", error);
+        res.status(500).json({ message: "Error retrieving user", error: error.message });
+    }
+});
+
 export default router;
